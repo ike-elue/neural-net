@@ -8,31 +8,23 @@ import com.neuralnetwork.util.Matrix;
  */
 public class Layer {
     
-    private Layer nextLayer;
-    private Layer backLayer;
-    
     private final String tag; 
     private final int neuronCount;
     private final int activationType;
     
     private Matrix synapses;
+    private Matrix bias; // Bias is really 1, this holds weights
     private Matrix sums;
     private Matrix error;
     private Matrix delta;
     
-    public Layer(String tag, int neuronCount, boolean isLastLayer, int activationType) {
+    public Layer(String tag, int neuronCount, int activationType) {
         this.tag = tag;
         this.activationType = activationType;
-        
-        if(isLastLayer)
-            this.neuronCount = neuronCount;
-        else
-            this.neuronCount = neuronCount + 1;
-        
-        nextLayer = null;
-        backLayer = null;
+        this.neuronCount = neuronCount;
         
         synapses = null;
+        bias = null;
         sums = null;
         error = null;
         delta = null;
@@ -56,14 +48,17 @@ public class Layer {
         return null;
     }
     
-    public void feedForward() {
-        sums = new Matrix(activationFunc(backLayer.getSums().dot(synapses)), "sums");
+    public Matrix feedForward(Matrix input) {
+        sums = new Matrix(activationFunc(input.dot(synapses).add(bias, true)), "sums");
+        return sums;
     }
     
-    public void backwardPropagate(double learningRate) {
-        error = new Matrix(nextLayer.getDelta().dot(nextLayer.getSynapses().transpose()), "error");
-        delta = new Matrix(error.scale(activationPrimeFunc(sums), false).scale(learningRate, true), "delta");
-        synapses.add(backLayer.getSums().transpose().dot(delta), true);
+    public Layer backwardPropagate(Layer layer,  double learningRate) {
+        layer.getSynapses().add(sums.transpose().dot(layer.getDelta()), true);
+        layer.getBias().add(layer.getDelta(), true);
+        error = new Matrix(layer.getDelta().dot(layer.getSynapses().transpose()), "error");
+        delta = new Matrix(error.mult(activationPrimeFunc(sums), false).scale(learningRate, true), "delta");
+        return this;
     }
     
     public Matrix getSynapses() {
@@ -76,6 +71,10 @@ public class Layer {
     
     public Matrix getSums() {
         return sums;
+    }
+    
+    public Matrix getBias() {
+        return bias;
     }
     
     public String getTag() {
@@ -94,6 +93,10 @@ public class Layer {
         this.synapses = synapses;
     }
     
+    public void setBias(Matrix bias) {
+        this.bias = bias;
+    }
+    
     public void setSums(Matrix sums) {
         this.sums = sums;
     }
@@ -101,19 +104,9 @@ public class Layer {
     public void setDelta(Matrix delta) {
         this.delta = delta;
     }
-    
-    public void setNextLayer(Layer layer) {
-        nextLayer = layer;
-    }
-    
-    public void setBackLayer(Layer layer) {
-        backLayer = layer;
-        synapses = new Matrix(backLayer.getNeuronCount(), neuronCount, "synapses");
-        synapses.randomizeMatrix();
-    }
-    
+ 
     @Override
     public String toString() {
-        return "-" + tag + "-\nWeights: " + synapses + "\nOutputs: " + sums;
+        return "-" + tag + "-\nWeights: " + synapses;
     }
 }

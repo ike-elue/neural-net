@@ -1,5 +1,6 @@
 package com.neuralnetwork.util;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,56 +31,25 @@ public class Utils {
         return sum * (1 - sum);
     }
     
-    public static double[][] convertToMultiArrayAndAddColumn(List<double[]> array) {
-        double[][] new_array = new double[array.size()][array.get(0).length + 1];
+    public static ArrayList<Matrix> toListOfMatrices(double[][] array) {
+        ArrayList<Matrix> matrices = new ArrayList<>();
         
-        for(int i = 0; i < array.size(); i++) {
-            for(int j = 0; j < array.get(0).length; j++) {
-                new_array[i][j] = array.get(i)[j];
-            }
-            new_array[i][array.get(0).length] = 1;
+        for (double[] a : array) {
+            matrices.add(new Matrix(a));
         }
         
-        return new_array;
+        return matrices;
     }
     
-    public static double[][] convertToMultiArray(List<double[]> array) {
-        double[][] new_array = new double[array.size()][array.get(0).length];
+    public static ArrayList<Matrix> toListOfMatrices(List<double[]> array) {
+        ArrayList<Matrix> matrices = new ArrayList<>();
         
-        for(int i = 0; i < array.size(); i++) {
-            for(int j = 0; j < array.get(0).length; j++) {
-                new_array[i][j] = array.get(i)[j];
-            }
-        }
-    
-        return new_array;
+        array.stream().forEach((a) -> {
+            matrices.add(new Matrix(a));
+        });
+        
+        return matrices;
     }
     
-    public static double[][] columnize(List<double[]> array, int index) {
-        double[][] new_array = new double[array.size()][1];
-        
-        for(int i = 0; i < array.size(); i++) {
-            new_array[i][0] = array.get(i)[index];
-        }
-        
-        return new_array;
-    }
     
-    public static double[][] columnize(double[][] array, int index) {
-        double[][] new_array = new double[array.length][1];
-        
-        for(int i = 0; i < array.length; i++) {
-            new_array[i][0] = array[i][index];
-        }
-        
-        return new_array;
-    }
-    
-     public static int contains(String[] array, String s) {
-        for(int i = 0; i < array.length; i++) {
-            if(array[i].equals(s))
-                return i;
-        }
-        return -1;
-    }
 }

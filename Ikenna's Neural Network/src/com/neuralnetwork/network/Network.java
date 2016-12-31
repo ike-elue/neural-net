@@ -18,7 +18,6 @@ public class Network {
     private final String tag;
     
     private Matrix error;
-    private Matrix trainingDataOutMatrix;
     
     private final List<String> tags;
     private final List<Integer> neuronCounts;
@@ -39,42 +38,71 @@ public class Network {
         initialized = false;
     }
    
-    public void train(double[][] inputs, double[][] outputs, int iterations, int everyNth) {
-        if(!initialized)
+    public void init(double[][] inputs, double[][] outputs) {
+        if(!initialized) {
             addFinalLayers();
+            initSynapses();
+        }
+        
         if(layers.size() < 2) {
             System.out.println("Less than 2 layers in network");
+            initialized = false;
+            layers.clear();
             return;
         }
-        int i;
-        for(i = 0; i < inputs.length; i++) {
+        
+        
+        for(int i = 0; i < inputs.length; i++) {
             if(!trainingDataIn.contains(inputs[i])) {
                 trainingDataIn.add(inputs[i]);
                 trainingDataOut.add(outputs[i]);
             }
         }
-        setInitialValues();
-        setOutputMatrix();
         System.out.println("\nTraining " + tag);
-        for(i = 0; i < iterations; i++) {
-            feedForward();
-            error = new Matrix(trainingDataOutMatrix.sub(getLastLayer().getSums(), false));
-            if(i % everyNth == 0) {
-                System.out.println(i + "th iteration --> Error: " + error.absolute(false).average());
+    }
+    
+    private void initSynapses() {
+        Layer next;
+        Layer prev = null;
+        for(Layer layer : layers) {
+            next = layer;
+            if(prev != null) {
+                next.setSynapses(new Matrix(prev.getNeuronCount(), next.getNeuronCount(), "synapses"));
+                next.getSynapses().randomizeMatrix();
+                next.setBias(new Matrix(1, next.getNeuronCount(), "Biases"));
+                next.getBias().randomizeMatrix();
             }
-            getLastLayer().setDelta(new Matrix(error.scale(getLastLayer().getSumsPrime(), false)));
-            getLastLayer().setSynapses(new Matrix(getLastLayer().getSynapses()
-                    .add(layers.get(getLast() - 1).getSums().transpose()
-                            .dot(getLastLayer().getDelta()), false)));
-            backPropagate();
+            prev = layer;
+        }
+    }
+    
+    public void train(double[][] inputs, double[][] outputs, int iterations, int everyNth) {
+        init(inputs, outputs);
+        ArrayList<Matrix> input = Utils.toListOfMatrices(trainingDataIn);
+        ArrayList<Matrix> output = Utils.toListOfMatrices(trainingDataOut);
+        for(int i = 0; i < iterations; i++) {
+            update(input, output, i, everyNth);
         }
         System.out.println("\nFinal Sturcture For Neural Network " + this);
     }
  
+    public void update(ArrayList<Matrix> input, ArrayList<Matrix> output, int i, int everyNth) {
+        for(int j = 0; j < input.size(); j++) {
+            error = new Matrix(output.get(j).sub(feedForward(input, j), false));
+            if(i % everyNth == 0 && j == input.size() - 1) {
+                System.out.println(i + "th iteration --> Error: " + error.absolute(false).average());
+            }
+            backPropagate(error);
+        }
+    }
+    
     public Matrix predict(double[][] inputs) {
-        setInitialValues(inputs);
-        feedForward();
-        return getLastLayer().getSums();
+        ArrayList<Matrix> results = new ArrayList<>();
+        ArrayList<Matrix> input = Utils.toListOfMatrices(inputs);
+        for(int i = 0; i < inputs.length; i++) {
+            results.add(feedForward(input, i));
+        }
+        return new Matrix(results, "Prediction");
     }
     
     public void addLayer(String tag, int neuronCount) {
@@ -82,69 +110,36 @@ public class Network {
         neuronCounts.add(neuronCount);
     }
     
-    private void addActualLayer(String tag, int neuronCount, boolean isLastLayer) {
-        Layer layer = new Layer(tag, neuronCount, isLastLayer, activationType);
-        if(!layers.isEmpty()) {
-            layer.setBackLayer(getLastLayer());
-            getLastLayer().setNextLayer(layer);
-        }
+    private void addActualLayer(String tag, int neuronCount) {
+        Layer layer = new Layer(tag, neuronCount, activationType);
         layers.add(layer);
     }
     
     private void addFinalLayers() {
         for(int i = 0; i < neuronCounts.size(); i++) {
-            if(i == neuronCounts.size() - 1)
-                addActualLayer(tags.get(i), neuronCounts.get(i), true);
-            else
-                addActualLayer(tags.get(i), neuronCounts.get(i), false);
+            addActualLayer(tags.get(i), neuronCounts.get(i));
         }
-        
         initialized = true;
     }
     
-    private void setInitialValues(double[][] inputs) {
-        layers.get(0).setSums(new Matrix(addColumn(inputs)));
-    }
     
-    private double[][] addColumn(double[][] inputs) {
-        double[][] new_array = new double[inputs.length][inputs[0].length + 1];
-        
-        for(int i = 0; i < inputs.length; i++) {
-            System.arraycopy(inputs[i], 0, new_array[i], 0, inputs[0].length);
-            new_array[i][inputs[0].length] = 1;
-        }
-        
-        return new_array;
-    }
-    
-    private void setInitialValues() {
-        layers.get(0).setSums(new Matrix(Utils.convertToMultiArrayAndAddColumn(trainingDataIn)));
-    }
-    
-    private void setOutputMatrix() {
-        trainingDataOutMatrix = new Matrix(Utils.convertToMultiArray(trainingDataOut));
-    }
-    
-    private void feedForward() {
+    private Matrix feedForward(ArrayList <Matrix> input, int index) {
+        Matrix m = input.get(index);
+        layers.get(0).setSums(m);
         for(int i = 1; i < layers.size(); i++) {
-            layers.get(i).feedForward();
-        }    
+            m = layers.get(i).feedForward(m);
+        }
+        return m;
     }
     
-    private void backPropagate() {
-        for(int i = layers.size() - 2; i > 0; i--) {
-            layers.get(i).backwardPropagate(learningRate);
+    private void backPropagate(Matrix error) {
+        layers.get(layers.size() - 1).setDelta(new Matrix(error.mult(layers.get(layers.size() - 1).getSumsPrime(), false)));
+        Layer layer = layers.get(layers.size() - 1);
+        for(int i = layers.size() - 2; i > -1; i--) {
+            layer = layers.get(i).backwardPropagate(layer, learningRate);
         }
     }
-    
-    private int getLast() {
-        return layers.size() - 1;
-    }
-    
-    private Layer getLastLayer() {
-        return layers.get(getLast());
-    }
-    
+   
     public void printTrainingData() {
         String str = "\nTraining Data For Neural Net "+ tag;
         
