@@ -6,13 +6,13 @@
 package com.neuralnetwork.util;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  *
  * @author Jonathan Elue
  */
 public class Matrix {
-   
     private String errorMessageStd, errorMessageDim;
     
     protected final String tag;
@@ -26,7 +26,17 @@ public class Matrix {
         this.columns = matrix[0].length;
         this.matrix = new double[rows][columns];
         extraMatrix = new Matrix(rows, columns, false, tag);
-        setMatrix(matrix);
+        set(matrix);
+        init();
+    } 
+    
+    public Matrix(double[] matrix) {
+        this.tag = "";
+        this.rows = 1;
+        this.columns = matrix.length;
+        this.matrix = new double[rows][columns];
+        extraMatrix = new Matrix(rows, columns, false, tag);
+        set(matrix);
         init();
     } 
     
@@ -36,7 +46,7 @@ public class Matrix {
         this.columns = m.columns;
         matrix = new double[rows][columns];
         extraMatrix = new Matrix(rows, columns, false, tag);
-        setMatrix(m);
+        set(m);
         init();
     }
     
@@ -46,7 +56,7 @@ public class Matrix {
         this.columns = m.columns;
         matrix = new double[rows][columns];
         extraMatrix = new Matrix(rows, columns, false, tag);
-        setMatrix(m);
+        set(m);
         init();
     }
     
@@ -65,9 +75,24 @@ public class Matrix {
         this.columns = matrix[0].length;
         this.matrix = new double[rows][columns];
         extraMatrix = new Matrix(rows, columns, false, tag);
-        setMatrix(matrix);
+        set(matrix);
         init();
     } 
+    
+    /**
+     * Assumes Row Matrices within
+     * @param matrix
+     * @param tag 
+     */
+    public Matrix(List <Matrix> matrix, String tag) {
+        this.tag = tag;
+        this.rows = matrix.size();
+        this.columns = matrix.get(0).columns;
+        this.matrix = new double[rows][columns];
+        extraMatrix = new Matrix(rows, columns, false, tag);
+        set(matrix);
+        init();
+    }
     
     public Matrix(int rows, int columns, String tag) {
         this.tag = tag;
@@ -92,36 +117,32 @@ public class Matrix {
         errorMessageDim = "Matrix \"" + tag + "\" Didn't Match Dimensions";
     }
     
-    public final void setMatrix(Matrix matrix) {
-        if(matrix == null) {
-            System.out.println("Matrix is Null");
-            return;
+    public final void set(double m) {
+        for(int i = 0; i < rows; i++) {
+            for(int j = 0; j < columns; j++) {
+                matrix[i][j] = m;
+            }
         }
-        
-        if(rows != matrix.getRows() || columns != matrix.getColumns()) {
-            System.out.println(errorMessageDim);
-            return;
-        }
-        
+    }
+    
+    private final void set(double[] matrix) {
+        System.arraycopy(matrix, 0, this.matrix[0], 0, columns);
+    }
+    
+    private void set(Matrix matrix) {
         set(matrix.matrix);
     }
     
-    public final void setMatrix(double[][] matrix) {
-        if(matrix == null) {
-            System.out.println("Matrix is Null");
-            return;
-        }
-        
-        if(rows != matrix.length || columns != matrix[0].length) {
-            System.out.println(errorMessageDim);
-            return;
-        }
-        set(matrix);
-    }
     
     private void set(double[][] matrix) {
         for(int i = 0; i < rows; i++) {
             System.arraycopy(matrix[i], 0, this.matrix[i], 0, columns);
+        }
+    }
+    
+    private void set(List <Matrix> matrix) {
+        for(int i = 0; i < rows; i++) {
+            System.arraycopy(matrix.get(i).matrix[0], 0, this.matrix[i], 0, columns);
         }
     }
     
@@ -192,7 +213,7 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.absolute(true);
         }
     }
@@ -235,7 +256,7 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.add(matrix, true);
         }
     }
@@ -254,7 +275,7 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.sub(matrix, true);
         }
     }
@@ -273,12 +294,12 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.scale(scalar, true);
         }
     }
     
-    public Matrix scale(Matrix matrix, boolean save) {
+    public Matrix mult(Matrix matrix, boolean save) {
         if(save) {
             for(int i = 0; i < rows; i++) {
                 for(int j = 0; j < columns; j++) {
@@ -292,8 +313,8 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
-            return extraMatrix.scale(matrix, true);
+            extraMatrix.set(this);
+            return extraMatrix.mult(matrix, true);
         }
     }
     
@@ -311,7 +332,7 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.hyperbolicTangent(true);
         }
     }
@@ -330,7 +351,7 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.hyperbolicTangentPrime(true);
         }
     }
@@ -349,7 +370,7 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.sigmoid(true);
         }
     }
@@ -368,9 +389,21 @@ public class Matrix {
                 System.out.println(errorMessageStd);
                 return null;
             }
-            extraMatrix.setMatrix(this);
+            extraMatrix.set(this);
             return extraMatrix.sigmoidPrime(true);
         }
+    }
+    
+    public Matrix getRow(int index) {
+        if(index >= matrix.length) {
+            System.out.println("Too many rows");
+            return null;
+        }
+        double[][] m = new double[1][matrix[0].length]; 
+        
+        System.arraycopy(matrix[index], 0, m[0], 0, matrix[index].length);
+        
+        return new Matrix(m, "Row " + index + " of Matrix \"" + tag + "\"");
     }
     
     @Override

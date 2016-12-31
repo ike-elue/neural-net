@@ -7,6 +7,8 @@ import com.neuralnetwork.network.Network;
  * @author CSLAB313-1740
  */
 public class Core {
+    // Need to figure out way to add context with the sums from previous layer in order to get the outputs
+    
     /**
      * To Create Normal ANN is 4 steps
     1) Create Inputs and Outputs
@@ -21,7 +23,7 @@ public class Core {
         double[][] outputsXOR = {{0},{1},{1},{0}};
         double[][] inputsPredict = {{0,0},{0,1}};
         
-        Network xor = new Network("XOR", Network.SIGMOID, .1);
+        Network xor = new Network("XOR", Network.SIGMOID, .7);
         
         xor.addLayer("input", 2);
         xor.addLayer("middle", 3);
